@@ -1,12 +1,19 @@
 FROM ubuntu:jammy
 
+SHELL ["/bin/bash", "-c"]
 RUN export DEBIAN_FRONTEND=noninteractive && export TZ=Etc/UTC && \
     apt-get update && \
     apt-get install -y eatmydata && \
     eatmydata apt-get dist-upgrade -y && \
+    eatmydata apt-get install --no-install-recommends -y locales locales-all && \
+    eatmydata sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    eatmydata locale-gen && \
+    eatmydata update-locale LANG=en_US.UTF-8
+ENV LANG en_US.UTF-8
+RUN export DEBIAN_FRONTEND=noninteractive && export TZ=Etc/UTC && \
     eatmydata apt-get install --no-install-recommends -y \
-        apt-utils \  
         apt-file \
+        apt-utils \  
         autoconf \
         automake \
         bash \
@@ -114,6 +121,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && export TZ=Etc/UTC && \
         man-db \
         multipath-tools \
         ncat \
+        net-tools \
         nettle-dev \
         ninja-build \
         openssh-client \
@@ -133,6 +141,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && export TZ=Etc/UTC && \
         python3-yaml \
         rpm2cpio \
         rr \
+        ruby-full \
         sed \
         sparse \
         sudo \
@@ -156,31 +165,55 @@ RUN export DEBIAN_FRONTEND=noninteractive && export TZ=Etc/UTC && \
     eatmydata apt-get autoclean -y && \
     eatmydata apt-file update
 
-RUN service ssh start
-
-ENV HOME=/home/main
+ARG HOME=/home/main
 RUN mkdir -p $HOME
 RUN groupadd -g 1000 main
 RUN useradd -d $HOME -g 1000 -u 1000 -s /bin/bash main
 RUN chown 1000:1000 /home/main
 USER main
 
+RUN echo 'export GEM_HOME="$HOME/gems"' >> ~/.bashrc
+RUN echo 'export PATH="$HOME/gems/bin:$PATH"' >> ~/.bashrc
+
+RUN source ~/.bashrc && eatmydata gem install jekyll bundler
+
 RUN eatmydata curl --proto '=https' --tlsv1.3 https://sh.rustup.rs -sSf > $HOME/rustup.sh 
 RUN eatmydata chmod +x $HOME/rustup.sh 
-RUN eatmydata $HOME/rustup.sh --profile default -y
-ENV PATH=$HOME/.cargo/bin:$PATH
+RUN source ~/.bashrc && eatmydata $HOME/rustup.sh --profile default -y
+RUN echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
 
 RUN eatmydata python3 -m venv $HOME/venv
-ENV PATH=$HOME/venv/bin:$PATH
-RUN eatmydata python3 -m pip install \
+RUN source $HOME/venv/bin/activate && eatmydata python3 -m pip install \
         cmake-format \
         pre-commit
+RUN echo 'export PATH="$HOME/venv/bin:$PATH"' >> ~/.bashrc
+
+RUN echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' >> ~/.bash_profile
+
+RUN source ~/.bashrc && mkdir -p $HOME/temp && cd $HOME/temp && \
+        eatmydata git clone --depth=1 https://github.com/hehaoqian/blog.git && \
+        cd blog && eatmydata bundle install
+RUN rm -rf $HOME/temp
+
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+RUN echo 'export GPG_TTY=$(tty)' >> ~/.bashrc
+RUN echo 'gpg-agent --pinentry-program=/usr/bin/pinentry --daemon' >> ~/.bashrc
 
 USER root
+ARG HOME=/root
 RUN chsh -s /bin/bash
-EXPOSE 22/tcp
-EXPOSE 22/udp
-COPY entrypoint.sh /root/entrypoint.sh
-RUN chmod +x /root/entrypoint.sh
-ENTRYPOINT /root/entrypoint.sh
+
+RUN echo -e '\nPort 60022' >> /etc/ssh/sshd_config
+
+# For sshd
+EXPOSE 60022/tcp
+EXPOSE 60022/udp
+
+# For Jekyll
+EXPOSE 4000/tcp
+EXPOSE 4000/udp
+
+COPY docker_cmd.sh /root/docker_cmd.sh
+RUN chmod +x /root/docker_cmd.sh
+CMD /root/docker_cmd.sh
 
