@@ -7,4 +7,4 @@ sudo docker run \
 --mount type=bind,src=$HOME/.ssh,dst=/home/main/.ssh,ro \
 --mount type=bind,src=$HOME/.gnupg,dst=/home/main/.gnupg,ro \
 --mount type=bind,src=/home/main/code,dst=/home/main/code \
-hehaoqian:dev
+hehaoqian/dev:latest

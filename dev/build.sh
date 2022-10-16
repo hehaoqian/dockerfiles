@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sudo docker build . -t hehaoqian:dev
+sudo docker build . -t hehaoqian/dev:latest
