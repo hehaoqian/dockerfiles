@@ -189,6 +189,7 @@ USER main
 
 RUN cd $HOME && git clone --depth=1 https://github.com/emscripten-core/emsdk.git -b 3.1.24
 RUN cd $HOME/emsdk && ./emsdk install latest && ./emsdk activate latest
+RUN echo 'source "/home/main/emsdk/emsdk_env.sh"' >> $HOME/.bashrc
 
 RUN echo 'export GEM_HOME="$HOME/gems"' >> ~/.bashrc
 RUN echo 'export PATH="$HOME/gems/bin:$PATH"' >> ~/.bashrc
@@ -224,7 +225,7 @@ RUN chsh -s /bin/bash
 
 RUN wget https://github.com/microsoft/vcpkg/archive/refs/tags/2022.10.19.tar.gz -O /root/vcpkg-2022.10.19.tar.gz
 RUN cd /root && tar -xvf vcpkg-2022.10.19.tar.gz
-RUN /root/vcpkg-2022.10.19/bootstrap-vcpkg.sh
+RUN /root/vcpkg-2022.10.19/bootstrap-vcpkg.sh -disableMetrics
 
 RUN echo -e '\nPort 60022' >> /etc/ssh/sshd_config
 
