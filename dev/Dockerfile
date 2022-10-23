@@ -180,6 +180,10 @@ RUN export DEBIAN_FRONTEND=noninteractive && export TZ=Etc/UTC && \
     eatmydata apt-get install --no-install-recommends -y \
 	vulkan-sdk
 
+RUN wget https://github.com/microsoft/vcpkg/archive/refs/tags/2022.10.19.tar.gz -O /root/vcpkg-2022.10.19.tar.gz
+RUN cd /root && tar -xvf vcpkg-2022.10.19.tar.gz
+RUN /root/vcpkg-2022.10.19/bootstrap-vcpkg.sh -disableMetrics
+
 ARG HOME=/home/main
 RUN mkdir -p $HOME
 RUN groupadd -g 1000 main
@@ -214,6 +218,11 @@ RUN source ~/.bashrc && mkdir -p $HOME/temp && cd $HOME/temp && \
         cd blog && git checkout 15f75286f72f9babc1579335ad10a159297f8be2 && eatmydata bundle install
 RUN rm -rf $HOME/temp
 
+RUN cd $HOME && git clone --depth=1 https://github.com/WebAssembly/wabt.git -b 1.0.30 && cd $HOME/wabt && \
+    cd $HOME/wabt && git submodule update --init && mkdir -p build/install && cd ./build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(pwd)/install && cmake --build . --target install -j 16
+RUN echo 'export PATH="$HOME/wabt/build/install/bin:$PATH"' >> ~/.bashrc
+
 RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 RUN echo 'export GPG_TTY=$(tty)' >> ~/.bashrc
 RUN echo 'gpg-agent --pinentry-program=/usr/bin/pinentry --daemon' >> ~/.bashrc
@@ -222,10 +231,6 @@ USER root
 ARG HOME=/root
 ENV LANG en_US.UTF-8
 RUN chsh -s /bin/bash
-
-RUN wget https://github.com/microsoft/vcpkg/archive/refs/tags/2022.10.19.tar.gz -O /root/vcpkg-2022.10.19.tar.gz
-RUN cd /root && tar -xvf vcpkg-2022.10.19.tar.gz
-RUN /root/vcpkg-2022.10.19/bootstrap-vcpkg.sh -disableMetrics
 
 RUN echo -e '\nPort 60022' >> /etc/ssh/sshd_config
 
